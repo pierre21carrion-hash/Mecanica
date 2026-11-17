@@ -13,10 +13,10 @@ async function init(){
 }
 function home(){
   reset();
-  app().innerHTML=(ME?`<p>Hola, ${esc((ME.full_name||'').split(' ')[0])}. ¿Qué necesitas hoy?</p>`:'<p>¿Qué necesitas hoy? Tu cuenta se crea al final, junto con tu pedido.</p><button class="btn sec" onclick="login()">Ya tengo cuenta · Iniciar sesión</button><div class="spacer"></div>')+`<div class="grid">
+  app().innerHTML=`<div class="hero">`+(ME?`<h1>Hola, ${esc((ME.full_name||'').split(' ')[0])}</h1><p>¿Qué necesitas hoy?</p>`:`<h1>¿Qué necesitas hoy?</h1><p>Responde unas preguntas y al final creas tu cuenta junto con el pedido.</p><button class="btn sec" onclick="login()">Ya tengo cuenta · Iniciar sesión</button><div class="spacer"></div>`)+`</div><div class="grid">
   <button class="big emer" onclick="go('emer')"><b>🆘 Emergencia</b><span>Grúa o asistencia inmediata en la vía</span></button>
-  <button class="big" onclick="go('det')"><b>✨ Detailing</b><span>Lavado, limpieza y protección donde estés</span></button>
-  <button class="big" onclick="go('mec')"><b>🔧 Mecánica</b><span>Diagnóstico y reparación a domicilio</span></button></div>`;
+  <button class="big det" onclick="go('det')"><b>✨ Detailing</b><span>Lavado, limpieza y protección donde estés</span></button>
+  <button class="big mec" onclick="go('mec')"><b>🔧 Mecánica</b><span>Diagnóstico y reparación a domicilio</span></button></div>`;
 }
 function login(){authView(app(),init)}
 const go=b=>{reset();S.br=b;draw();scrollTo(0,0)};
