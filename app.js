@@ -7,18 +7,18 @@ const reset=()=>{S={br:null,a:{},l:{},ord:[],tf:'',taken:[],co:null,cur:null,lt:
 
 async function init(){
   ME=await profile();
-  if(!ME){$('#nav').innerHTML='';authView(app(),init);return;}
-  $('#nav').innerHTML='<a onclick="home()">Inicio</a><a onclick="orders()">Mis pedidos</a>'+(ME.role!=='client'?'<a href="admin.html">Panel</a>':'')+'<a onclick="logout()">Salir</a>';
+  $('#nav').innerHTML=ME?'<a onclick="home()">Inicio</a><a onclick="orders()">Mis pedidos</a>'+(ME.role!=='client'?'<a href="admin.html">Panel</a>':'')+'<a onclick="logout()">Salir</a>':'<a onclick="login()">Iniciar sesión</a>';
   const {data}=await sb.from('services').select('*').eq('active',true).order('price');
   SV=data||[];home();
 }
 function home(){
   reset();
-  app().innerHTML=`<p>Hola, ${esc((ME.full_name||'').split(' ')[0])}. ¿Qué necesitas hoy?</p><div class="grid">
+  app().innerHTML=(ME?`<p>Hola, ${esc((ME.full_name||'').split(' ')[0])}. ¿Qué necesitas hoy?</p>`:'<p>¿Qué necesitas hoy? Tu cuenta se crea al final, junto con tu pedido.</p><button class="btn sec" onclick="login()">Ya tengo cuenta · Iniciar sesión</button><div class="spacer"></div>')+`<div class="grid">
   <button class="big emer" onclick="go('emer')"><b>🆘 Emergencia</b><span>Grúa o asistencia inmediata en la vía</span></button>
   <button class="big" onclick="go('det')"><b>✨ Detailing</b><span>Lavado, limpieza y protección donde estés</span></button>
   <button class="big" onclick="go('mec')"><b>🔧 Mecánica</b><span>Diagnóstico y reparación a domicilio</span></button></div>`;
 }
+function login(){authView(app(),init)}
 const go=b=>{reset();S.br=b;draw();scrollTo(0,0)};
 
 function steps(){
@@ -38,6 +38,7 @@ function steps(){
     add('cita','Elige fecha y hora','cita');
     add('ubicacion','¿Dónde lo hacemos?','loc');
   }
+  if(!ME)add('cuenta','Crea tu cuenta para recibir tu pedido','cuenta');
   return o;
 }
 function price(){
@@ -56,8 +57,10 @@ function draw(){
   if(st.t==='texto')h+='<textarea id="in" rows="3" placeholder="Cuéntanos qué ocurre"></textarea><button class="btn" onclick="txt()">Siguiente</button>';
   if(st.t==='loc')h+=`<input id="in" placeholder="Calle, número y referencia" value="${esc(S.lt)}"><button class="btn sec" onclick="geo()">📍 Usar mi ubicación actual</button><div class="spacer"></div><button class="btn" onclick="loc()">Siguiente</button>`;
   if(st.t==='cita')h+=citaHTML();
+  if(st.t==='cuenta')h+='<input id="cn" placeholder="Nombre completo"><input id="ct" placeholder="Teléfono / WhatsApp" inputmode="tel"><input id="ce" type="email" placeholder="Correo"><input id="cp" type="password" placeholder="Contraseña (mínimo 6 caracteres)"><button class="btn" onclick="cuentaOK()">Siguiente</button>';
   app().innerHTML=h+'</div>';
 }
+function cuentaOK(){const n=$('#cn').value.trim(),t=$('#ct').value.trim(),e=$('#ce').value.trim(),p=$('#cp').value;if(!n||t.replace(/\D/g,'').length<7||!e.includes('@')||p.length<6)return alert('Revisa nombre, teléfono, correo y una contraseña de 6 caracteres');set('cuenta',{n,t,e,p},n)}
 function set(k,v,l){S.a[k]=v;S.l[k]=l;S.ord.push(k);draw();scrollTo(0,0)}
 function pick(i){const x=S.cur.o[i];set(S.cur.k,x[0],x[1].split(' — ')[0])}
 function txt(){const v=$('#in').value.trim();if(!v)return alert('Escribe una respuesta');set(S.cur.k,v,v)}
@@ -83,9 +86,9 @@ const slot=h=>set('cita',{f:S.tf,h},S.tf+' a las '+h);
 
 function summary(){
   const a=S.a,e=S.br==='emer',p=price();
-  const rows=steps().filter(s=>!['cita','ubicacion'].includes(s.k)).map(s=>[s.q,S.l[s.k]]);
+  const rows=steps().filter(s=>!['cita','ubicacion','cuenta'].includes(s.k)).map(s=>[s.q,S.l[s.k]]);
   if(!e)rows.push(['Fecha y hora',S.l.cita]);
-  rows.push(['Ubicación',a.ubicacion.t],['Contacto',(ME.full_name||'')+' · '+(ME.phone||'')]);
+  rows.push(['Ubicación',a.ubicacion.t],['Contacto',ME?(ME.full_name||'')+' · '+(ME.phone||''):a.cuenta.n+' · '+a.cuenta.t]);
   const tot=p!=null?usd(p):e?CONFIG.GRUA_TXT:'Se cotiza en sitio';
   return `<div class="card"><h2>Revisa tu pedido</h2>${rows.map(([k,v])=>`<div class="sum-row"><span class="note">${esc(k)}</span><span>${esc(v)}</span></div>`).join('')}
   <div class="sum-row"><b>Total estimado</b><span class="total">${esc(tot)}</span></div>
@@ -93,8 +96,17 @@ function summary(){
   <button class="btn ${e?'red':''}" onclick="confirmar()">${e?'Pedir asistencia ahora':'Confirmar cita'}</button></div>`;
 }
 async function confirmar(){
+  if(!ME){
+    const c=S.a.cuenta;
+    let r=await sb.auth.signUp({email:c.e,password:c.p,options:{data:{full_name:c.n,phone:c.t}}});
+    if(r.error&&/already/i.test(r.error.message)) r={error:(await sb.auth.signInWithPassword({email:c.e,password:c.p})).error};
+    else if(!r.error&&!r.data.session) r={error:(await sb.auth.signInWithPassword({email:c.e,password:c.p})).error||null};
+    if(r.error) return alert('No pudimos crear tu cuenta: '+r.error.message);
+    ME=await profile();
+    if(!ME) return alert('Confirma tu correo para continuar. Revisa tu bandeja de entrada.');
+  }
   const a=S.a,e=S.br==='emer',ref='AE-'+Math.random().toString(36).slice(2,7).toUpperCase();
-  const details=Object.fromEntries(steps().filter(s=>!['cita','ubicacion','servicio'].includes(s.k)).map(s=>[s.q,S.l[s.k]]));
+  const details=Object.fromEntries(steps().filter(s=>!['cita','ubicacion','servicio','cuenta'].includes(s.k)).map(s=>[s.q,S.l[s.k]]));
   const {error}=await sb.from('orders').insert({ref,user_id:ME.id,branch:S.br,service:e?null:a.servicio,details,address:a.ubicacion.t,
     lat:a.ubicacion.co?a.ubicacion.co[0]:null,lng:a.ubicacion.co?a.ubicacion.co[1]:null,
     scheduled_at:e?null:new Date(`${a.cita.f}T${a.cita.h}:00-05:00`).toISOString(),price:price()});
