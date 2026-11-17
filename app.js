@@ -13,10 +13,20 @@ async function init(){
 }
 function home(){
   reset();
-  app().innerHTML=(ME?`<p>Hola, ${esc((ME.full_name||'').split(' ')[0])}. ¿En qué podemos ayudarte?</p>`:'<p>¿En qué podemos ayudarte?</p><p class="note">Solicita asistencia en carretera o agenda un servicio para tu vehículo.</p><button class="btn sec" onclick="login()">Ya tengo cuenta · Iniciar sesión</button><div class="spacer"></div>')+`<div class="grid">
-  <button class="big emer" onclick="go('emer')"><b>🆘 Necesito ayuda ahora</b><span>Solicitar grúa o asistencia en carretera</span></button>
-  <button class="big" onclick="go('det')"><b>✨ Detailing a domicilio</b><span>Lavado, limpieza y cuidado para tu auto</span></button>
-  <button class="big" onclick="go('mec')"><b>🔧 Mecánica a domicilio</b><span>Diagnóstico y reparación donde estés</span></button></div>`;
+  const hello=ME?`Hola, ${esc((ME.full_name||'').split(' ')[0])}`:'Asistencia y cuidado para tu auto';
+  const loginAction=ME?'':`<button class="home-login" onclick="login()"><span class="home-login-icon">👤</span><span><b>¿Ya tienes una cuenta?</b><small>Inicia sesión para ver tus solicitudes</small></span><span class="home-login-arrow">›</span></button>`;
+  app().innerHTML=`<section class="welcome">
+    <div class="welcome-copy"><span class="eyebrow"><i></i> SERVICIO AUTOMOTRIZ A DOMICILIO</span><h1>${hello}</h1><p>¿Qué necesitas hoy?</p><div class="welcome-rule"></div><span class="welcome-detail">Estamos listos para ayudarte, estés donde estés.</span></div>
+    <div class="welcome-mark" aria-hidden="true"><span>🚘</span><i>✦</i></div>
+  </section>
+  <div class="service-heading"><div><span class="eyebrow">ELIGE UNA OPCIÓN</span><h2>¿Cómo podemos ayudarte?</h2></div><span class="service-count">01 <i>/</i> 03</span></div>
+  ${loginAction}
+  <div class="grid">
+    <button class="big emer" onclick="go('emer')"><span class="service-icon">🆘</span><span class="service-copy"><small>ASISTENCIA INMEDIATA</small><b>Emergencia en carretera</b><span>Grúa, batería, llanta y más. Te ayudamos ahora.</span></span><span class="service-arrow">↗</span></button>
+    <button class="big" onclick="go('det')"><span class="service-icon">✨</span><span class="service-copy"><small>CUIDADO Y LIMPIEZA</small><b>Detailing a domicilio</b><span>Lavado, limpieza profunda y protección para tu auto.</span></span><span class="service-arrow">↗</span></button>
+    <button class="big" onclick="go('mec')"><span class="service-icon">🔧</span><span class="service-copy"><small>MANTENIMIENTO Y REPARACIÓN</small><b>Mecánica a domicilio</b><span>Diagnóstico y reparación en el lugar que prefieras.</span></span><span class="service-arrow">↗</span></button>
+  </div>
+  <p class="home-footnote"><span>🛡️</span> Atención confiable, con precios referenciales antes de confirmar.</p>`;
 }
 function login(){authView(app(),init)}
 const go=b=>{reset();S.br=b;draw();scrollTo(0,0)};
@@ -51,9 +61,10 @@ function draw(){
   const st=steps().find(s=>!(s.k in S.a));S.cur=st;
   const back=`<button class="back" onclick="back()">← ${S.ord.length?'Atrás':'Inicio'}</button>`;
   if(!st){app().innerHTML=back+summary();return;}
-  let h=`${back}<div class="card"><p class="note">Paso ${S.ord.length+1} de ${steps().length}</p><h2>${st.q}</h2>`;
+  const stepIcon={problema:'🚨',heridos:'🩺',vehiculo:'🚘',ubicacion:'📍',servicio:S.br==='det'?'✨':'🔧',pintura:'🎨',sintoma:'🛑',descripcion:'📝',cita:'🗓️',cuenta:'👤'}[st.k]||'✦';
+  let h=`${back}<div class="card flow-card"><div class="flow-progress"><span>PASO ${String(S.ord.length+1).padStart(2,'0')}</span><span>DE ${String(steps().length).padStart(2,'0')}</span><div><i style="width:${Math.round(S.ord.length/steps().length*100)}%"></i></div></div><div class="flow-title"><span class="flow-icon">${stepIcon}</span><div><span class="eyebrow">${S.br==='emer'?'ASISTENCIA EN CARRETERA':S.br==='det'?'DETAILING A DOMICILIO':'MECÁNICA A DOMICILIO'}</span><h2>${st.q}</h2><p>Selecciona la opción que mejor describe lo que necesitas.</p></div></div>`;
   if(st.note)h+=`<div class="alert">${st.note}</div>`;
-  if(st.t==='opt')h+='<div class="opts">'+st.o.map((x,i)=>`<button class="opt" onclick="pick(${i})"><span>${esc(x[1])}</span><span>›</span></button>`).join('')+'</div>';
+  if(st.t==='opt')h+='<div class="opts">'+st.o.map((x,i)=>{const icons={bateria:'🔋',llanta:'🛞',choque:'🚧',combustible:'⛽',otro:'🧰',si:'🩹',no:'✅',liviano:'🚗',suv:'🚙',camioneta:'🛻',pesado:'🚚',leve:'✨',moderada:'🪄',fuerte:'🧽',chirrido:'🔊',pedal:'🦶',vibra:'〰️',nada:'✅'};const icon=icons[x[0]]||(S.br==='det'?'✨':'🔧');return `<button class="opt" onclick="pick(${i})"><span class="opt-label"><i>${icon}</i><span>${esc(x[1])}</span></span><span class="opt-arrow">›</span></button>`}).join('')+'</div>';
   if(st.t==='texto')h+='<textarea id="in" rows="3" placeholder="Cuéntanos qué ocurre"></textarea><button class="btn" onclick="txt()">Continuar</button>';
   if(st.t==='loc')h+=`<input id="in" placeholder="Calle, número y referencia" value="${esc(S.lt)}"><button class="btn sec" onclick="geo()">📍 Usar mi ubicación actual</button><div class="spacer"></div><button class="btn" onclick="loc()">Continuar</button>`;
   if(st.t==='cita')h+=citaHTML();
