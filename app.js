@@ -48,7 +48,9 @@ function steps(){
     add('cita','¿Qué día y hora te convienen?','cita');
     add('ubicacion','¿Dónde realizamos el servicio?','loc');
   }
-  if(!ME)add('cuenta','Crea tu cuenta para recibir tu pedido','cuenta');
+  // CAMBIO: la emergencia pide solo nombre y teléfono; el resto pide cuenta
+  if(!ME&&S.br!=='emer')add('cuenta','Crea tu cuenta para recibir tu pedido','cuenta');
+  if(!ME&&S.br==='emer')add('contacto','¿A nombre de quién te llamamos?','contacto');
   return o;
 }
 function price(){
@@ -61,7 +63,7 @@ function draw(){
   const st=steps().find(s=>!(s.k in S.a));S.cur=st;
   const back=`<button class="back" onclick="back()">← ${S.ord.length?'Atrás':'Inicio'}</button>`;
   if(!st){app().innerHTML=back+summary();return;}
-  const stepIcon={problema:'🚨',heridos:'🩺',vehiculo:'🚘',ubicacion:'📍',servicio:S.br==='det'?'✨':'🔧',pintura:'🎨',sintoma:'🛑',descripcion:'📝',cita:'🗓️',cuenta:'👤'}[st.k]||'✦';
+  const stepIcon={problema:'🚨',heridos:'🩺',vehiculo:'🚘',ubicacion:'📍',servicio:S.br==='det'?'✨':'🔧',pintura:'🎨',sintoma:'🛑',descripcion:'📝',cita:'🗓️',cuenta:'👤',contacto:'👤'}[st.k]||'✦';
   let h=`${back}<div class="card flow-card"><div class="flow-progress"><span>PASO ${String(S.ord.length+1).padStart(2,'0')}</span><span>DE ${String(steps().length).padStart(2,'0')}</span><div><i style="width:${Math.round(S.ord.length/steps().length*100)}%"></i></div></div><div class="flow-title"><span class="flow-icon">${stepIcon}</span><div><span class="eyebrow">${S.br==='emer'?'ASISTENCIA EN CARRETERA':S.br==='det'?'DETAILING A DOMICILIO':'MECÁNICA A DOMICILIO'}</span><h2>${st.q}</h2><p>Selecciona la opción que mejor describe lo que necesitas.</p></div></div>`;
   if(st.note)h+=`<div class="alert">${st.note}</div>`;
   if(st.t==='opt')h+='<div class="opts">'+st.o.map((x,i)=>{const icons={bateria:'🔋',llanta:'🛞',choque:'🚧',combustible:'⛽',otro:'🧰',si:'🩹',no:'✅',liviano:'🚗',suv:'🚙',camioneta:'🛻',pesado:'🚚',leve:'✨',moderada:'🪄',fuerte:'🧽',chirrido:'🔊',pedal:'🦶',vibra:'〰️',nada:'✅'};const icon=icons[x[0]]||(S.br==='det'?'✨':'🔧');return `<button class="opt" onclick="pick(${i})"><span class="opt-label"><i>${icon}</i><span>${esc(x[1])}</span></span><span class="opt-arrow">›</span></button>`}).join('')+'</div>';
@@ -69,9 +71,13 @@ function draw(){
   if(st.t==='loc')h+=`<input id="in" placeholder="Calle, número y referencia" value="${esc(S.lt)}"><button class="btn sec" onclick="geo()">📍 Usar mi ubicación actual</button><div class="spacer"></div><button class="btn" onclick="loc()">Continuar</button>`;
   if(st.t==='cita')h+=citaHTML();
   if(st.t==='cuenta')h+='<input id="cn" placeholder="Nombre completo"><input id="ct" placeholder="Teléfono / WhatsApp" inputmode="tel"><input id="ce" type="email" placeholder="Correo"><input id="cp" type="password" placeholder="Contraseña (mínimo 6 caracteres)"><button class="btn" onclick="cuentaOK()">Siguiente</button>';
+  // CAMBIO: paso de contacto para emergencias sin cuenta
+  if(st.t==='contacto')h+='<input id="cn" placeholder="Nombre completo"><input id="ct" placeholder="Teléfono / WhatsApp" inputmode="tel"><button class="btn" onclick="contactoOK()">Siguiente</button>';
   app().innerHTML=h+'</div>';
 }
 function cuentaOK(){const n=$('#cn').value.trim(),t=$('#ct').value.trim(),e=$('#ce').value.trim(),p=$('#cp').value;if(!n||t.replace(/\D/g,'').length<7||!e.includes('@')||p.length<6)return alert('Revisa nombre, teléfono, correo y una contraseña de 6 caracteres');set('cuenta',{n,t,e,p},n)}
+// CAMBIO: validación del contacto de emergencia
+function contactoOK(){const n=$('#cn').value.trim(),t=$('#ct').value.trim();if(!n||t.replace(/\D/g,'').length<7)return alert('Escribe tu nombre y un teléfono válido');set('contacto',{n,t},n)}
 function set(k,v,l){S.a[k]=v;S.l[k]=l;S.ord.push(k);draw();scrollTo(0,0)}
 function pick(i){const x=S.cur.o[i];set(S.cur.k,x[0],x[1].split(' — ')[0])}
 function txt(){const v=$('#in').value.trim();if(!v)return alert('Escribe una respuesta');set(S.cur.k,v,v)}
@@ -97,9 +103,15 @@ const slot=h=>set('cita',{f:S.tf,h},S.tf+' a las '+h);
 
 function summary(){
   const a=S.a,e=S.br==='emer',p=price();
-  const rows=steps().filter(s=>!['cita','ubicacion','cuenta'].includes(s.k)).map(s=>[s.q,S.l[s.k]]);
+  const rows=steps().filter(s=>!['cita','ubicacion','cuenta','contacto'].includes(s.k)).map(s=>[s.q,S.l[s.k]]);
   if(!e)rows.push(['Fecha y hora',S.l.cita]);
-  rows.push(['Ubicación',a.ubicacion.t],['Contacto',ME?(ME.full_name||'')+' · '+(ME.phone||''):a.cuenta.n+' · '+a.cuenta.t]);
+  rows.push(['Ubicación',a.ubicacion.t]);
+  // CAMBIO: contacto según si hay cuenta, emergencia sin cuenta o registro nuevo
+  let contacto;
+  if(ME)contacto=(ME.full_name||'')+' · '+(ME.phone||'');
+  else if(a.contacto)contacto=a.contacto.n+' · '+a.contacto.t;
+  else contacto=a.cuenta.n+' · '+a.cuenta.t;
+  rows.push(['Contacto',contacto]);
   const tot=p!=null?usd(p):e?CONFIG.GRUA_TXT:'Se cotiza en sitio';
   return `<div class="card"><p class="note">Último paso</p><h2>Revisa los detalles</h2>${rows.map(([k,v])=>`<div class="sum-row"><span class="note">${esc(k)}</span><span>${esc(v)}</span></div>`).join('')}
   <div class="sum-row"><b>Total estimado</b><span class="total">${esc(tot)}</span></div>
@@ -107,7 +119,9 @@ function summary(){
   <button class="btn ${e?'red':''}" onclick="confirmar()">${e?'Solicitar asistencia':'Confirmar cita'}</button></div>`;
 }
 async function confirmar(){
-  if(!ME){
+  const e=S.br==='emer';
+  // CAMBIO: solo servicios normales crean cuenta; la emergencia va como invitado
+  if(!ME&&!e){
     const c=S.a.cuenta;
     let r=await sb.auth.signUp({email:c.e,password:c.p,options:{data:{full_name:c.n,phone:c.t}}});
     if(r.error&&/already/i.test(r.error.message)) r={error:(await sb.auth.signInWithPassword({email:c.e,password:c.p})).error};
@@ -116,9 +130,13 @@ async function confirmar(){
     ME=await profile();
     if(!ME) return alert('Confirma tu correo para continuar. Revisa tu bandeja de entrada.');
   }
-  const a=S.a,e=S.br==='emer',ref='AE-'+Math.random().toString(36).slice(2,7).toUpperCase();
-  const details=Object.fromEntries(steps().filter(s=>!['cita','ubicacion','servicio','cuenta'].includes(s.k)).map(s=>[s.q,S.l[s.k]]));
-  const {error}=await sb.from('orders').insert({ref,user_id:ME.id,branch:S.br,service:e?null:a.servicio,details,address:a.ubicacion.t,
+  const a=S.a,ref='AE-'+Math.random().toString(36).slice(2,7).toUpperCase();
+  const details=Object.fromEntries(steps().filter(s=>!['cita','ubicacion','servicio','cuenta','contacto'].includes(s.k)).map(s=>[s.q,S.l[s.k]]));
+  const {error}=await sb.from('orders').insert({ref,
+    user_id:ME?ME.id:null,
+    guest_name:ME?null:a.contacto.n,
+    guest_phone:ME?null:a.contacto.t,
+    branch:S.br,service:e?null:a.servicio,details,address:a.ubicacion.t,
     lat:a.ubicacion.co?a.ubicacion.co[0]:null,lng:a.ubicacion.co?a.ubicacion.co[1]:null,
     scheduled_at:e?null:new Date(`${a.cita.f}T${a.cita.h}:00-05:00`).toISOString(),price:price()});
   if(error){
@@ -126,18 +144,16 @@ async function confirmar(){
     else alert('No se pudo guardar el pedido: '+error.message);
     return;
   }
-  const msg=`Hola, soy ${ME.full_name}. Hice el pedido ${ref} (${e?'emergencia':S.l.servicio}) en ${a.ubicacion.t}.`;
-  app().innerHTML=`<div class="card"><h2>${e?'Solicitud enviada':'Cita agendada'}</h2><p>Código: <b>${ref}</b></p>
-  <p class="note">${e?'Te contactaremos de inmediato para confirmar el tiempo de llegada.':S.l.cita+'. Te escribiremos para confirmar.'}</p>
-  <a class="btn" target="_blank" rel="noopener" href="https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(msg)}">Escribir por WhatsApp</a><div class="spacer"></div>
-  <button class="btn sec" onclick="orders()">Ver mis solicitudes</button></div>`;
+  const quien=ME?ME.full_name:a.contacto.n;
+  const msg=`Hola, soy ${quien}. Hice el pedido ${ref} (${e?'emergencia':S.l.servicio}) en ${a.ubicacion.t}.`;
+  app().innerHTML=`<div class="card"><p class="note">Pedido ${ref}</p><h2>${e?'Recibimos tu solicitud':'¡Listo, tu cita está confirmada!'}</h2><p>${e?'Te llamaremos en breve al número que nos diste.':'Te esperamos en la fecha y hora elegidas.'}</p><a class="btn" target="_blank" rel="noopener" href="https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(msg)}">Enviar mensaje por WhatsApp</a><div class="spacer"></div><button class="btn sec" onclick="home()">Volver al inicio</button></div>`;
+  scrollTo(0,0);
 }
 async function orders(){
+  if(!ME)return login();
+  reset();
   const {data}=await sb.from('orders').select('*,services(name)').order('created_at',{ascending:false});
-  app().innerHTML='<button class="back" onclick="home()">← Inicio</button><h2>Mis solicitudes</h2>'+((data||[]).map(o=>`<div class="card">
-  <div class="sum-row"><b>${IC[o.branch]} ${esc(o.services?.name||'Emergencia')}</b><span class="badge ${o.status}">${ST[o.status]}</span></div>
-  <p class="note">${o.ref} · ${fdate(o.scheduled_at||o.created_at)}</p>${o.price!=null?`<div>${usd(o.price)}</div>`:''}
-  ${o.status==='nuevo'?`<div class="spacer"></div><button class="btn sec" onclick="cancelar('${o.id}')">Cancelar solicitud</button>`:''}</div>`).join('')||'<p class="note">Aún no tienes solicitudes. Cuando hagas una, aparecerá aquí.</p>');
+  const L=data||[];
+  app().innerHTML='<button class="back" onclick="home()">← Inicio</button><h2>Mis pedidos</h2>'+(L.map(o=>`<div class="card"><div class="sum-row"><b>${IC[o.branch]} ${esc(o.services?.name||'Emergencia')}</b><span class="badge ${o.status}">${ST[o.status]}</span></div><p class="note">${o.scheduled_at?'Cita: '+fdate(o.scheduled_at):'Pedido: '+fdate(o.created_at)}</p><p class="note">📍 ${esc(o.address)}</p></div>`).join('')||'<p class="note">Aún no tienes pedidos.</p>');
 }
-async function cancelar(id){if(!confirm('¿Cancelar este pedido?'))return;await sb.from('orders').update({status:'cancelado'}).eq('id',id);orders()}
 init();
