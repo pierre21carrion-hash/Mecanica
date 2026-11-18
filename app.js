@@ -11,22 +11,22 @@ async function init(){
   const {data}=await sb.from('services').select('*').eq('active',true).order('price');
   SV=data||[];home();
 }
+// DISEÑO: hero centrado, tarjetas de servicio, bloque de confianza e iconos SVG
 function home(){
   reset();
   const hello=ME?`Hola, ${esc((ME.full_name||'').split(' ')[0])}`:'Asistencia y cuidado para tu auto';
-  const loginAction=ME?'':`<button class="home-login" onclick="login()"><span class="home-login-icon">👤</span><span><b>¿Ya tienes una cuenta?</b><small>Inicia sesión para ver tus solicitudes</small></span><span class="home-login-arrow">›</span></button>`;
-  app().innerHTML=`<section class="welcome">
-    <div class="welcome-copy"><span class="eyebrow"><i></i> SERVICIO AUTOMOTRIZ A DOMICILIO</span><h1>${hello}</h1><p>¿Qué necesitas hoy?</p><div class="welcome-rule"></div><span class="welcome-detail">Estamos listos para ayudarte, estés donde estés.</span></div>
-    <div class="welcome-mark" aria-hidden="true"><span>🚘</span><i>✦</i></div>
-  </section>
-  <div class="service-heading"><div><span class="eyebrow">ELIGE UNA OPCIÓN</span><h2>¿Cómo podemos ayudarte?</h2></div><span class="service-count">01 <i>/</i> 03</span></div>
-  ${loginAction}
+  const loginAction=ME?'':`<button class="home-login" onclick="login()"><span class="home-login-icon">${ico('user')}</span><span><b>¿Ya tienes una cuenta?</b><small>Inicia sesión para ver tus solicitudes</small></span><span class="home-login-arrow">${ico('chev')}</span></button>`;
+  const svc=(k,cls,tag,title,desc)=>`<button class="big${cls}" onclick="go('${k}')"><span class="service-icon">${IC[k]}</span><span class="service-copy"><small>${tag}</small><b>${title}</b><span>${desc}</span></span><span class="service-arrow">${ico('chev')}</span></button>`;
+  const trust=(i,t,d)=>`<li><span class="trust-ico">${ico(i)}</span><div><b>${t}</b><p>${d}</p></div></li>`;
+  app().innerHTML=`<section class="welcome"><span class="eyebrow"><i></i> Servicio automotriz a domicilio</span><h1>${hello}</h1><p>¿Qué necesitas hoy? Estamos listos para ayudarte, estés donde estés.</p></section>
+  <div class="service-heading"><h2>¿Cómo podemos ayudarte?</h2></div>
   <div class="grid">
-    <button class="big emer" onclick="go('emer')"><span class="service-icon">🆘</span><span class="service-copy"><small>ASISTENCIA INMEDIATA</small><b>Emergencia en carretera</b><span>Grúa, batería, llanta y más. Te ayudamos ahora.</span></span><span class="service-arrow">↗</span></button>
-    <button class="big" onclick="go('det')"><span class="service-icon">✨</span><span class="service-copy"><small>CUIDADO Y LIMPIEZA</small><b>Detailing a domicilio</b><span>Lavado, limpieza profunda y protección para tu auto.</span></span><span class="service-arrow">↗</span></button>
-    <button class="big" onclick="go('mec')"><span class="service-icon">🔧</span><span class="service-copy"><small>MANTENIMIENTO Y REPARACIÓN</small><b>Mecánica a domicilio</b><span>Diagnóstico y reparación en el lugar que prefieras.</span></span><span class="service-arrow">↗</span></button>
+    ${svc('emer',' emer','Asistencia inmediata','Emergencia en carretera','Grúa, batería, llanta y más. Te ayudamos ahora.')}
+    ${svc('det','','Cuidado y limpieza','Detailing a domicilio','Lavado, limpieza profunda y protección para tu auto.')}
+    ${svc('mec','','Mantenimiento y reparación','Mecánica a domicilio','Diagnóstico y reparación en el lugar que prefieras.')}
   </div>
-  <p class="home-footnote"><span>🛡️</span> Atención confiable, con precios referenciales antes de confirmar.</p>`;
+  ${loginAction}
+  <ul class="trust">${trust('shield','Precio antes de confirmar','Ves el precio referencial antes de pedir.')}${trust('home','Atención a domicilio','Vamos al lugar donde estés.')}${trust('cal','Agenda a tu medida','Elige día y hora para detailing y mecánica.')}</ul>`;
 }
 function login(){authView(app(),init)}
 const go=b=>{reset();S.br=b;draw();scrollTo(0,0)};
@@ -59,20 +59,23 @@ function price(){
   let p=s.price*VEH[a.vehiculo][1];if(a.pintura)p*=PIN[a.pintura];
   return Math.round(p)+DESP;
 }
+// DISEÑO: progreso, opciones como tarjetas, campos con etiqueta e iconos SVG
 function draw(){
   const st=steps().find(s=>!(s.k in S.a));S.cur=st;
-  const back=`<button class="back" onclick="back()">← ${S.ord.length?'Atrás':'Inicio'}</button>`;
+  const back=`<button class="back" onclick="back()">${ico('back')} ${S.ord.length?'Atrás':'Inicio'}</button>`;
   if(!st){app().innerHTML=back+summary();return;}
-  const stepIcon={problema:'🚨',heridos:'🩺',vehiculo:'🚘',ubicacion:'📍',servicio:S.br==='det'?'✨':'🔧',pintura:'🎨',sintoma:'🛑',descripcion:'📝',cita:'🗓️',cuenta:'👤',contacto:'👤'}[st.k]||'✦';
-  let h=`${back}<div class="card flow-card"><div class="flow-progress"><span>PASO ${String(S.ord.length+1).padStart(2,'0')}</span><span>DE ${String(steps().length).padStart(2,'0')}</span><div><i style="width:${Math.round(S.ord.length/steps().length*100)}%"></i></div></div><div class="flow-title"><span class="flow-icon">${stepIcon}</span><div><span class="eyebrow">${S.br==='emer'?'ASISTENCIA EN CARRETERA':S.br==='det'?'DETAILING A DOMICILIO':'MECÁNICA A DOMICILIO'}</span><h2>${st.q}</h2><p>Selecciona la opción que mejor describe lo que necesitas.</p></div></div>`;
-  if(st.note)h+=`<div class="alert">${st.note}</div>`;
-  if(st.t==='opt')h+='<div class="opts">'+st.o.map((x,i)=>{const icons={bateria:'🔋',llanta:'🛞',choque:'🚧',combustible:'⛽',otro:'🧰',si:'🩹',no:'✅',liviano:'🚗',suv:'🚙',camioneta:'🛻',pesado:'🚚',leve:'✨',moderada:'🪄',fuerte:'🧽',chirrido:'🔊',pedal:'🦶',vibra:'〰️',nada:'✅'};const icon=icons[x[0]]||(S.br==='det'?'✨':'🔧');return `<button class="opt" onclick="pick(${i})"><span class="opt-label"><i>${icon}</i><span>${esc(x[1])}</span></span><span class="opt-arrow">›</span></button>`}).join('')+'</div>';
-  if(st.t==='texto')h+='<textarea id="in" rows="3" placeholder="Cuéntanos qué ocurre"></textarea><button class="btn" onclick="txt()">Continuar</button>';
-  if(st.t==='loc')h+=`<input id="in" placeholder="Calle, número y referencia" value="${esc(S.lt)}"><button class="btn sec" onclick="geo()">📍 Usar mi ubicación actual</button><div class="spacer"></div><button class="btn" onclick="loc()">Continuar</button>`;
+  const stepIcon={problema:'alert',heridos:'cross',vehiculo:'car',ubicacion:'pin',servicio:S.br==='det'?'det':'mec',pintura:'drop',sintoma:'info',descripcion:'note',cita:'cal',cuenta:'user',contacto:'user'}[st.k]||'det';
+  const total=steps().length,pct=Math.round((S.ord.length+1)/total*100);
+  const hint={opt:'Selecciona la opción que mejor describe lo que necesitas.',texto:'Cuéntanos con tus palabras lo que ocurre.',loc:'Escribe la dirección o usa tu ubicación actual.',cita:'Elige el día y el horario que prefieras.',cuenta:'Con tu cuenta podrás seguir el estado de tu pedido.',contacto:'Te llamaremos a este número.'}[st.t];
+  let h=`${back}<div class="card flow-card"><div class="flow-progress"><span>Paso ${S.ord.length+1} de ${total}</span><div role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div></div><div class="flow-title"><span class="flow-icon">${ico(stepIcon)}</span><div><span class="eyebrow">${S.br==='emer'?'Asistencia en carretera':S.br==='det'?'Detailing a domicilio':'Mecánica a domicilio'}</span><h2>${st.q}</h2><p>${hint}</p></div></div>`;
+  if(st.note)h+=`<div class="alert">${ico('info')}<span>${st.note}</span></div>`;
+  if(st.t==='opt')h+='<div class="opts">'+st.o.map((x,i)=>{const icons={bateria:'battery',llanta:'tire',choque:'cone',combustible:'fuel',otro:'box',si:'cross',no:'check',liviano:'car',suv:'suv',camioneta:'pickup',pesado:'truck',leve:'ok',moderada:'det',fuerte:'layers',chirrido:'sound',pedal:'down',vibra:'pulse',nada:'check'};const icon=icons[x[0]]||(S.br==='det'?'det':'mec');const p=x[1].split(' — '),pr=p.slice(1).join(' — ');return `<button class="opt" onclick="pick(${i})"><span class="opt-label"><i>${ico(icon)}</i><span>${esc(p[0])}</span></span>${pr?`<span class="opt-meta">${esc(pr)}</span>`:''}<span class="opt-arrow">${ico('chev')}</span></button>`}).join('')+'</div>';
+  if(st.t==='texto')h+='<label class="field"><span>Descripción</span><textarea id="in" rows="3" placeholder="Cuéntanos qué ocurre"></textarea></label><button class="btn" onclick="txt()">Continuar</button>';
+  if(st.t==='loc')h+=`<label class="field"><span>Dirección</span><input id="in" placeholder="Calle, número y referencia" value="${esc(S.lt)}"></label><button class="btn sec" onclick="geo()">${ico('pin')} Usar mi ubicación actual</button><div class="spacer"></div><button class="btn" onclick="loc()">Continuar</button>`;
   if(st.t==='cita')h+=citaHTML();
-  if(st.t==='cuenta')h+='<input id="cn" placeholder="Nombre completo"><input id="ct" placeholder="Teléfono / WhatsApp" inputmode="tel"><input id="ce" type="email" placeholder="Correo"><input id="cp" type="password" placeholder="Contraseña (mínimo 6 caracteres)"><button class="btn" onclick="cuentaOK()">Siguiente</button>';
+  if(st.t==='cuenta')h+='<label class="field"><span>Nombre completo</span><input id="cn" autocomplete="name" placeholder="Ej. María Pérez"></label><label class="field"><span>Teléfono / WhatsApp</span><input id="ct" inputmode="tel" autocomplete="tel" placeholder="Ej. 0999 999 999"></label><label class="field"><span>Correo</span><input id="ce" type="email" autocomplete="email" placeholder="tu@correo.com"></label><label class="field"><span>Contraseña</span><input id="cp" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres"></label><button class="btn" onclick="cuentaOK()">Siguiente</button>';
   // CAMBIO: paso de contacto para emergencias sin cuenta
-  if(st.t==='contacto')h+='<input id="cn" placeholder="Nombre completo"><input id="ct" placeholder="Teléfono / WhatsApp" inputmode="tel"><button class="btn" onclick="contactoOK()">Siguiente</button>';
+  if(st.t==='contacto')h+='<label class="field"><span>Nombre completo</span><input id="cn" autocomplete="name" placeholder="Ej. María Pérez"></label><label class="field"><span>Teléfono / WhatsApp</span><input id="ct" inputmode="tel" autocomplete="tel" placeholder="Ej. 0999 999 999"></label><button class="btn" onclick="contactoOK()">Siguiente</button>';
   app().innerHTML=h+'</div>';
 }
 function cuentaOK(){const n=$('#cn').value.trim(),t=$('#ct').value.trim(),e=$('#ce').value.trim(),p=$('#cp').value;if(!n||t.replace(/\D/g,'').length<7||!e.includes('@')||p.length<6)return alert('Revisa nombre, teléfono, correo y una contraseña de 6 caracteres');set('cuenta',{n,t,e,p},n)}
@@ -87,11 +90,12 @@ function geo(){
   navigator.geolocation.getCurrentPosition(p=>{S.co=[p.coords.latitude.toFixed(5),p.coords.longitude.toFixed(5)];$('#in').value='Ubicación GPS: '+S.co.join(', ')},()=>alert('No pudimos obtener tu ubicación. Escríbela manualmente.'));
 }
 function loc(){const t=$('#in').value.trim();if(!t)return alert('Escribe una dirección o usa tu ubicación');S.lt=t;set('ubicacion',{t,co:S.co},t)}
+// DISEÑO: etiquetas visibles para fecha y horarios
 function citaHTML(){
   const f=S.tf;
-  let h=`<input type="date" min="${today()}" value="${f}" onchange="setDate(this.value)">`;
+  let h=`<label class="field"><span>Fecha</span><input type="date" min="${today()}" value="${f}" onchange="setDate(this.value)"></label>`;
   if(!f)return h+'<p class="note">Elige una fecha para ver los horarios disponibles.</p>';
-  return h+'<div class="slots">'+HORAS.map(x=>{const t=new Date(`${f}T${x}:00-05:00`).getTime();const off=S.taken.includes(t)||t<Date.now();return `<button class="opt" ${off?'disabled':''} onclick="slot('${x}')">${x}</button>`}).join('')+'</div>';
+  return h+'<div class="field"><span>Horarios disponibles</span><div class="slots">'+HORAS.map(x=>{const t=new Date(`${f}T${x}:00-05:00`).getTime();const off=S.taken.includes(t)||t<Date.now();return `<button class="opt" ${off?'disabled':''} onclick="slot('${x}')">${x}</button>`}).join('')+'</div></div>';
 }
 async function setDate(f){
   S.tf=f;S.taken=[];draw();if(!f)return;
@@ -113,8 +117,9 @@ function summary(){
   else contacto=a.cuenta.n+' · '+a.cuenta.t;
   rows.push(['Contacto',contacto]);
   const tot=p!=null?usd(p):e?CONFIG.GRUA_TXT:'Se cotiza en sitio';
+  // DISEÑO: tabla limpia, total destacado y botón principal
   return `<div class="card"><p class="note">Último paso</p><h2>Revisa los detalles</h2>${rows.map(([k,v])=>`<div class="sum-row"><span class="note">${esc(k)}</span><span>${esc(v)}</span></div>`).join('')}
-  <div class="sum-row"><b>Total estimado</b><span class="total">${esc(tot)}</span></div>
+  <div class="sum-row sum-total"><b>Total estimado</b><span class="total${p!=null?'':' txt'}">${esc(tot)}</span></div>
   <p class="note">El precio es referencial. Repuestos y trabajos adicionales se cotizan por separado.</p>
   <button class="btn ${e?'red':''}" onclick="confirmar()">${e?'Solicitar asistencia':'Confirmar cita'}</button></div>`;
 }
@@ -146,7 +151,8 @@ async function confirmar(){
   }
   const quien=ME?ME.full_name:a.contacto.n;
   const msg=`Hola, soy ${quien}. Hice el pedido ${ref} (${e?'emergencia':S.l.servicio}) en ${a.ubicacion.t}.`;
-  app().innerHTML=`<div class="card"><p class="note">Pedido ${ref}</p><h2>${e?'Recibimos tu solicitud':'¡Listo, tu cita está confirmada!'}</h2><p>${e?'Te llamaremos en breve al número que nos diste.':'Te esperamos en la fecha y hora elegidas.'}</p><a class="btn" target="_blank" rel="noopener" href="https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(msg)}">Enviar mensaje por WhatsApp</a><div class="spacer"></div><button class="btn sec" onclick="home()">Volver al inicio</button></div>`;
+  // DISEÑO: pantalla de éxito con check animado, código de pedido y WhatsApp
+  app().innerHTML=`<div class="card center"><svg class="check" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="36" r="34"/><path d="M22 37l10 10 18-20"/></svg><h2>${e?'Recibimos tu solicitud':'¡Listo, tu cita está confirmada!'}</h2><p class="note">${e?'Te llamaremos en breve al número que nos diste.':'Te esperamos en la fecha y hora elegidas.'}</p><div class="ref-box"><span class="note">Código de pedido</span><b class="ref">${ref}</b></div><a class="btn" target="_blank" rel="noopener" href="https://wa.me/${CONFIG.WHATSAPP}?text=${encodeURIComponent(msg)}">${ico('chat')} Enviar mensaje por WhatsApp</a><button class="btn sec" onclick="home()">Volver al inicio</button></div>`;
   scrollTo(0,0);
 }
 async function orders(){
@@ -154,6 +160,7 @@ async function orders(){
   reset();
   const {data}=await sb.from('orders').select('*,services(name)').order('created_at',{ascending:false});
   const L=data||[];
-  app().innerHTML='<button class="back" onclick="home()">← Inicio</button><h2>Mis pedidos</h2>'+(L.map(o=>`<div class="card"><div class="sum-row"><b>${IC[o.branch]} ${esc(o.services?.name||'Emergencia')}</b><span class="badge ${o.status}">${ST[o.status]}</span></div><p class="note">${o.scheduled_at?'Cita: '+fdate(o.scheduled_at):'Pedido: '+fdate(o.created_at)}</p><p class="note">📍 ${esc(o.address)}</p></div>`).join('')||'<p class="note">Aún no tienes pedidos.</p>');
+  // DISEÑO: tarjetas de pedido con estado, fecha y dirección
+  app().innerHTML=`<button class="back" onclick="home()">${ico('back')} Inicio</button><h2>Mis pedidos</h2>`+(L.map(o=>`<div class="card"><div class="sum-row"><b>${IC[o.branch]} ${esc(o.services?.name||'Emergencia')}</b><span class="badge ${o.status}">${ST[o.status]}</span></div><p class="meta">${ico('cal')}<span>${o.scheduled_at?'Cita: '+fdate(o.scheduled_at):'Pedido: '+fdate(o.created_at)}</span></p><p class="meta">${ico('pin')}<span>${esc(o.address)}</span></p></div>`).join('')||`<div class="card center"><h2>Aún no tienes pedidos</h2><p class="note">Cuando solicites un servicio, podrás seguir su estado aquí.</p><button class="btn" onclick="home()">Pedir un servicio</button></div>`);
 }
 init();
