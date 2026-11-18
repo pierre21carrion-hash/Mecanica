@@ -6,6 +6,7 @@ const app=()=>$('#app');
 const reset=()=>{S={br:null,a:{},l:{},ord:[],tf:'',taken:[],co:null,cur:null,lt:''}};
 
 async function init(){
+  if(authLink(app(),init))return;
   ME=await profile();
   $('#nav').innerHTML=ME?'<a onclick="home()">Inicio</a><a onclick="orders()">Mis pedidos</a>'+(ME.role!=='client'?'<a href="admin.html">Panel</a>':'')+'<a onclick="logout()">Salir</a>':'<a onclick="login()">Iniciar sesión</a>';
   const {data}=await sb.from('services').select('*').eq('active',true).order('price');

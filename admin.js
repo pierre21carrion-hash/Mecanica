@@ -2,6 +2,7 @@ let ME,ORD=[],SV=[],F={b:'',s:'act'},TAB='ord';
 const app=()=>$('#app');
 const act=o=>!['completado','cancelado'].includes(o.status);
 async function init(){
+  if(authLink(app(),init))return;
   ME=await profile();
   if(!ME){$('#nav').innerHTML='';authView(app(),init);return;}
   if(ME.role==='client'){app().innerHTML='<div class="card"><h2>Sin acceso</h2><p>Esta cuenta no pertenece al equipo.</p><a class="btn sec" href="index.html">Ir a la página de clientes</a></div>';return;}

@@ -60,10 +60,12 @@ function authView(el,done){
     ${reg?'<label class="field"><span>Nombre completo</span><input id="n" autocomplete="name" placeholder="Ej. María Pérez"></label><label class="field"><span>Teléfono / WhatsApp</span><input id="t" inputmode="tel" autocomplete="tel" placeholder="Ej. 0999 999 999"></label>':''}
     <label class="field"><span>Correo</span><input id="e" type="email" autocomplete="email" placeholder="tu@correo.com"></label>
     <label class="field"><span>Contraseña</span><input id="p" type="password" autocomplete="${reg?'new-password':'current-password'}" placeholder="Mínimo 6 caracteres"></label>
+    ${reg?'':'<button type="button" class="linkbtn" id="fg">¿Olvidaste tu contraseña?</button>'}
     <p class="note msg" id="m" hidden></p>
     <button class="btn" id="go">${reg?'Crear cuenta':'Entrar'}</button><div class="spacer"></div>
     <button class="btn sec" id="sw">${reg?'Ya tengo cuenta':'Crear cuenta nueva'}</button></div>`;
     $('#sw').onclick=()=>{reg=!reg;draw()};
+    if($('#fg'))$('#fg').onclick=()=>forgotView(el,draw,$('#e').value.trim());
     $('#go').onclick=async()=>{
       const m=$('#m'),e=$('#e').value.trim(),p=$('#p').value;let r;
       m.hidden=false;m.textContent='Un momento…';
@@ -78,4 +80,56 @@ function authView(el,done){
     };
   };
   draw();
+}
+
+// ---- RESTABLECER CONTRASEÑA ----
+// Se leen al cargar, antes de que supabase-js limpie la URL
+let IS_RECOVERY=/type=recovery/.test(location.hash),LINK_ERR=/error_code=|error=access_denied/.test(location.hash);
+const RESET_REDIRECT=location.origin+'/';
+function forgotView(el,onBack,email=''){
+  el.innerHTML=`<div class="card auth"><h2>Restablecer contraseña</h2>
+  <p class="note">Escribe tu correo y te enviaremos un enlace para crear una nueva contraseña.</p>
+  <label class="field"><span>Correo</span><input id="fe" type="email" autocomplete="email" value="${esc(email)}" placeholder="tu@correo.com"></label>
+  <p class="note msg" id="fm" hidden></p>
+  <button class="btn" id="fgo">Enviar enlace</button><div class="spacer"></div>
+  <button class="btn sec" id="fback">Volver a iniciar sesión</button></div>`;
+  $('#fback').onclick=onBack;
+  $('#fgo').onclick=async()=>{
+    const m=$('#fm'),e=$('#fe').value.trim();m.hidden=false;
+    if(!e.includes('@')){m.textContent='Escribe un correo válido.';return;}
+    m.textContent='Enviando…';$('#fgo').disabled=true;
+    const {error}=await sb.auth.resetPasswordForEmail(e,{redirectTo:RESET_REDIRECT});
+    $('#fgo').disabled=false;
+    m.textContent=error?(/rate|seconds|limit/i.test(error.message)?'Espera un minuto antes de pedir otro enlace.':error.message):'Si el correo está registrado, recibirás un enlace en unos minutos. Revisa también la carpeta de spam.';
+  };
+}
+function recoveryView(el,done){
+  el.innerHTML=`<div class="card auth"><h2>Nueva contraseña</h2>
+  <p class="note">Elige una contraseña nueva para tu cuenta.</p>
+  <label class="field"><span>Nueva contraseña</span><input id="np" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres"></label>
+  <label class="field"><span>Repite la contraseña</span><input id="np2" type="password" autocomplete="new-password" placeholder="Repite la contraseña"></label>
+  <p class="note msg" id="rm" hidden></p>
+  <button class="btn" id="rgo">Guardar contraseña</button></div>`;
+  $('#rgo').onclick=async()=>{
+    const m=$('#rm'),a=$('#np').value,b=$('#np2').value;m.hidden=false;
+    if(a.length<6){m.textContent='La contraseña debe tener al menos 6 caracteres.';return;}
+    if(a!==b){m.textContent='Las contraseñas no coinciden.';return;}
+    m.textContent='Guardando…';$('#rgo').disabled=true;
+    const {error}=await sb.auth.updateUser({password:a});
+    if(error){$('#rgo').disabled=false;m.textContent=/session/i.test(error.message)?'El enlace expiró. Pide uno nuevo.':error.message;return;}
+    m.textContent='Contraseña actualizada. Entrando…';setTimeout(done,1200);
+  };
+}
+// Llamar al inicio de init(): si la página se abrió desde el enlace del correo, muestra el formulario
+function authLink(el,done){
+  if(!IS_RECOVERY&&!LINK_ERR)return false;
+  $('#nav').innerHTML='';
+  const clean=()=>{history.replaceState(null,'',location.pathname);IS_RECOVERY=false;LINK_ERR=false;};
+  if(IS_RECOVERY)recoveryView(el,()=>{clean();done()});
+  else{
+    el.innerHTML=`<div class="card auth"><h2>Enlace no válido</h2><p class="note">El enlace expiró o ya fue usado. Pide uno nuevo para restablecer tu contraseña.</p>
+    <button class="btn" id="nl">Pedir nuevo enlace</button></div>`;
+    $('#nl').onclick=()=>{clean();forgotView(el,()=>authView(el,done))};
+  }
+  return true;
 }
